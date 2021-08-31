@@ -1,0 +1,33 @@
+FROM centos:7
+
+MAINTAINER Constantin Sidorov <normal66@yandex.ru>
+
+ENV TZ=Asia/Yekaterinburg
+ENV PATH /usr/local/bin:$PATH
+ENV LANG C.UTF-8
+
+FROM centos:7
+
+ENV PYTHON_VERSION "3.9.6"
+ENV SSL_VERSION "1.1.1l"
+
+RUN yum install -y gcc make zlib-dev openssl-devel sqlite-devel bzip2-devel perl-core && yum clean all
+
+RUN curl -SLO https://www.openssl.org/source/openssl-${SSL_VERSION}.tar.gz \
+    && tar xzvf openssl-${SSL_VERSION}.tar.gz \
+    && cd openssl-${SSL_VERSION} \
+    && ./config && make && make install && mkdir lib && cp ./*.{so,a,pc} ./lib \
+    && echo "/usr/local/lib64" > /etc/ld.so.conf.d/openssl-${SSL_VERSION}.conf \
+    && ldconfig -v \
+    && export LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64 \
+    && echo "export LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64" >> ~/.bashrc && source ~/.bashrc
+
+RUN curl -SLO https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tgz \
+    && tar xvf Python-${PYTHON_VERSION}.tgz \
+    && cd Python-${PYTHON_VERSION} \
+    && ./configure --prefix=/usr/local --enable-optimizations --with-openssl=/openssl-${SSL_VERSION} \
+    && make altinstall \
+    && cd / \
+    && rm -rf Python-${PYTHON_VERSION}* && rm -rf openssl-${SSL_VERSION}* && rm -rf /usr/share/doc/* && rm -rf /usr/share/man/*
+    
+CMD ["python3.9"]
